@@ -1,4 +1,4 @@
-package com.example.ioniccalculator;
+package com.example.photogallery;
 
 import com.getcapacitor.BridgeActivity;
 

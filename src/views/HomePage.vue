@@ -1,1037 +1,273 @@
 <template>
   <IonPage>
+    <IonHeader class="ion-no-border">
+      <IonToolbar>
+        <IonTitle>Photo Gallery</IonTitle>
+        <IonButtons slot="end">
+          <IonButton aria-label="Choose photos" :disabled="busy" @click="pickFromLibrary">
+            <IonIcon slot="icon-only" :icon="imagesOutline" />
+          </IonButton>
+        </IonButtons>
+      </IonToolbar>
+    </IonHeader>
+
     <IonContent :fullscreen="true">
-
-      <div class="page-container">
-
-        <div class="calculator">
-
-          <!-- Application Title -->
-          <div class="app-title">
-            <span>IONIC</span>
-            <h1>Calculator</h1>
+      <main class="gallery-shell">
+        <section class="hero" aria-labelledby="gallery-heading">
+          <div>
+            <p class="eyebrow">YOUR MOMENTS</p>
+            <h1 id="gallery-heading">Keep life in frame.</h1>
+            <p class="hero-copy">
+              Capture a new photo or bring in favourites from your device. Your photos stay stored on this device.
+            </p>
           </div>
-
-          <!-- Calculator Display -->
-          <div class="display-container">
-
-            <div class="previous-operation">
-              {{ operationText }}
-            </div>
-
-            <div class="display">
-              {{ display }}
-            </div>
-
+          <div class="photo-count" aria-live="polite">
+            <strong>{{ photos.length }}</strong>
+            <span>{{ photos.length === 1 ? 'photo' : 'photos' }}</span>
           </div>
+        </section>
 
-          <!-- Calculator Buttons -->
-          <IonGrid class="calculator-grid">
+        <section class="actions" aria-label="Photo actions">
+          <IonButton class="primary-action" :disabled="busy" @click="capturePhoto">
+            <IonSpinner v-if="busyAction === 'camera'" name="crescent" />
+            <IonIcon v-else slot="start" :icon="cameraOutline" />
+            Take photo
+          </IonButton>
+          <IonButton fill="outline" class="secondary-action" :disabled="busy" @click="pickFromLibrary">
+            <IonSpinner v-if="busyAction === 'library'" name="crescent" />
+            <IonIcon v-else slot="start" :icon="imagesOutline" />
+            Add from device
+          </IonButton>
+        </section>
 
-            <!-- FIRST ROW -->
-            <IonRow>
+        <section v-if="loading" class="state-card" aria-live="polite">
+          <IonSpinner name="crescent" />
+          <p>Opening your gallery…</p>
+        </section>
 
-              <IonCol size="6">
-                <IonButton
-                  expand="block"
-                  class="calculator-button utility"
-                  @click="clearCalculator"
-                >
-                  C
-                </IonButton>
-              </IonCol>
+        <section v-else-if="photos.length === 0" class="empty-state">
+          <div class="empty-icon"><IonIcon :icon="imageOutline" /></div>
+          <h2>Your gallery is ready</h2>
+          <p>Take your first picture or choose one already on your device.</p>
+          <IonButton fill="clear" :disabled="busy" @click="capturePhoto">
+            Start with a photo
+            <IonIcon slot="end" :icon="arrowForwardOutline" />
+          </IonButton>
+        </section>
 
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button utility"
-                  @click="backspace"
-                >
-                  ⌫
-                </IonButton>
-              </IonCol>
+        <section v-else class="photo-grid" aria-label="Saved photos">
+          <article v-for="photo in photos" :key="photo.id" class="photo-card">
+            <button class="photo-open" :aria-label="`Open photo from ${formatDate(photo.createdAt)}`" @click="selectedPhoto = photo">
+              <img :src="photo.webviewPath" :alt="`Saved photo from ${formatDate(photo.createdAt)}`" loading="lazy" />
+              <span class="photo-date">{{ formatDate(photo.createdAt) }}</span>
+            </button>
+            <IonButton
+              fill="clear"
+              class="delete-button"
+              :aria-label="`Delete photo from ${formatDate(photo.createdAt)}`"
+              @click="photoPendingDeletion = photo"
+            >
+              <IonIcon slot="icon-only" :icon="trashOutline" />
+            </IonButton>
+          </article>
+        </section>
+      </main>
 
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button operator"
-                  @click="selectOperator('/')"
-                >
-                  ÷
-                </IonButton>
-              </IonCol>
+      <IonFab v-if="photos.length" slot="fixed" vertical="bottom" horizontal="end">
+        <IonFabButton aria-label="Take a photo" :disabled="busy" @click="capturePhoto">
+          <IonIcon :icon="cameraOutline" />
+        </IonFabButton>
+      </IonFab>
 
-            </IonRow>
+      <IonModal :is-open="Boolean(selectedPhoto)" class="photo-viewer" @did-dismiss="selectedPhoto = null">
+        <IonHeader class="ion-no-border">
+          <IonToolbar>
+            <IonTitle>{{ selectedPhoto ? formatDate(selectedPhoto.createdAt) : 'Photo' }}</IonTitle>
+            <IonButtons slot="end">
+              <IonButton aria-label="Close photo" @click="selectedPhoto = null">
+                <IonIcon slot="icon-only" :icon="closeOutline" />
+              </IonButton>
+            </IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <div class="viewer-content">
+            <img v-if="selectedPhoto" :src="selectedPhoto.webviewPath" alt="Selected gallery photo" />
+          </div>
+        </IonContent>
+      </IonModal>
 
-            <!-- SECOND ROW -->
-            <IonRow>
+      <IonAlert
+        :is-open="Boolean(photoPendingDeletion)"
+        header="Delete this photo?"
+        message="This permanently removes the photo from this device."
+        :buttons="deleteButtons"
+        @did-dismiss="photoPendingDeletion = null"
+      />
 
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('7')"
-                >
-                  7
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('8')"
-                >
-                  8
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('9')"
-                >
-                  9
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button operator"
-                  @click="selectOperator('*')"
-                >
-                  ×
-                </IonButton>
-              </IonCol>
-
-            </IonRow>
-
-            <!-- THIRD ROW -->
-            <IonRow>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('4')"
-                >
-                  4
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('5')"
-                >
-                  5
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('6')"
-                >
-                  6
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button operator"
-                  @click="selectOperator('-')"
-                >
-                  −
-                </IonButton>
-              </IonCol>
-
-            </IonRow>
-
-            <!-- FOURTH ROW -->
-            <IonRow>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('1')"
-                >
-                  1
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('2')"
-                >
-                  2
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('3')"
-                >
-                  3
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button operator"
-                  @click="selectOperator('+')"
-                >
-                  +
-                </IonButton>
-              </IonCol>
-
-            </IonRow>
-
-            <!-- FIFTH ROW -->
-            <IonRow>
-
-              <IonCol size="6">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputNumber('0')"
-                >
-                  0
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button"
-                  @click="inputDecimal"
-                >
-                  .
-                </IonButton>
-              </IonCol>
-
-              <IonCol size="3">
-                <IonButton
-                  expand="block"
-                  class="calculator-button equals"
-                  @click="calculate"
-                >
-                  =
-                </IonButton>
-              </IonCol>
-
-            </IonRow>
-
-          </IonGrid>
-
-        </div>
-
-      </div>
-
+      <IonToast
+        :is-open="Boolean(message)"
+        :message="message"
+        :color="messageColor"
+        :duration="3200"
+        position="bottom"
+        @did-dismiss="message = ''"
+      />
     </IonContent>
   </IonPage>
 </template>
 
-
 <script setup lang="ts">
-
-import { computed, ref } from 'vue';
-
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import {
-  IonPage,
-  IonContent,
-  IonGrid,
-  IonRow,
-  IonCol,
-  IonButton
-} from '@ionic/vue';
+  IonAlert, IonButton, IonButtons, IonContent, IonFab, IonFabButton,
+  IonHeader, IonIcon, IonModal, IonPage, IonSpinner, IonTitle, IonToast, IonToolbar,
+} from '@ionic/vue'
+import {
+  arrowForwardOutline, cameraOutline, closeOutline, imageOutline, imagesOutline, trashOutline,
+} from 'ionicons/icons'
+import {
+  choosePhotos, deletePhoto, isCancellation, listenForRestoredPhotos, loadPhotos, takePhoto, type GalleryPhoto,
+} from '@/services/photoGallery'
 
+const photos = ref<GalleryPhoto[]>([])
+const loading = ref(true)
+const busyAction = ref<'camera' | 'library' | 'delete' | null>(null)
+const selectedPhoto = ref<GalleryPhoto | null>(null)
+const photoPendingDeletion = ref<GalleryPhoto | null>(null)
+const message = ref('')
+const messageColor = ref<'success' | 'danger'>('success')
+const busy = computed(() => busyAction.value !== null)
+const restoredPhotoListener = listenForRestoredPhotos((photo) => {
+  if (!photos.value.some((item) => item.id === photo.id)) photos.value.unshift(photo)
+})
 
-type Operator = '+' | '-' | '*' | '/';
+const deleteButtons = [
+  { text: 'Cancel', role: 'cancel' },
+  { text: 'Delete', role: 'destructive', handler: () => removePendingPhoto() },
+]
 
-
-/*
-|--------------------------------------------------------------------------
-| Calculator State
-|--------------------------------------------------------------------------
-*/
-
-const display = ref('0');
-
-const firstNumber = ref<number | null>(null);
-
-const selectedOperator = ref<Operator | null>(null);
-
-const waitingForSecondNumber = ref(false);
-
-const calculationCompleted = ref(false);
-
-
-/*
-|--------------------------------------------------------------------------
-| Operator Symbol
-|--------------------------------------------------------------------------
-*/
-
-const operatorSymbol = computed(() => {
-
-  switch (selectedOperator.value) {
-
-    case '+':
-      return '+';
-
-    case '-':
-      return '−';
-
-    case '*':
-      return '×';
-
-    case '/':
-      return '÷';
-
-    default:
-      return '';
-
+onMounted(async () => {
+  try {
+    photos.value = await loadPhotos()
+  } catch (error) {
+    showError(error, 'Your saved photos could not be loaded.')
+  } finally {
+    loading.value = false
   }
+})
 
-});
+onUnmounted(async () => (await restoredPhotoListener).remove())
 
-
-/*
-|--------------------------------------------------------------------------
-| Text Above Display
-|--------------------------------------------------------------------------
-*/
-
-const operationText = computed(() => {
-
-  if (
-    firstNumber.value === null ||
-    selectedOperator.value === null
-  ) {
-
-    return 'Ready';
-
+async function capturePhoto() {
+  if (busy.value) return
+  busyAction.value = 'camera'
+  try {
+    const photo = await takePhoto()
+    photos.value.unshift(photo)
+    showMessage('Photo saved to this device.')
+  } catch (error) {
+    if (!isCancellation(error)) showError(error, 'The photo could not be captured.')
+  } finally {
+    busyAction.value = null
   }
-
-  return `${formatNumber(firstNumber.value)} ${operatorSymbol.value}`;
-
-});
-
-
-/*
-|--------------------------------------------------------------------------
-| Number Input
-|--------------------------------------------------------------------------
-*/
-
-function inputNumber(number: string) {
-
-  if (
-    display.value === 'Error' ||
-    calculationCompleted.value
-  ) {
-
-    display.value = number;
-
-    calculationCompleted.value = false;
-
-    return;
-
-  }
-
-
-  if (waitingForSecondNumber.value) {
-
-    display.value = number;
-
-    waitingForSecondNumber.value = false;
-
-    return;
-
-  }
-
-
-  if (display.value === '0') {
-
-    display.value = number;
-
-  } else {
-
-    display.value += number;
-
-  }
-
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Decimal
-|--------------------------------------------------------------------------
-*/
-
-function inputDecimal() {
-
-  if (
-    display.value === 'Error' ||
-    waitingForSecondNumber.value ||
-    calculationCompleted.value
-  ) {
-
-    display.value = '0.';
-
-    waitingForSecondNumber.value = false;
-
-    calculationCompleted.value = false;
-
-    return;
-
+async function pickFromLibrary() {
+  if (busy.value) return
+  busyAction.value = 'library'
+  try {
+    const added = await choosePhotos()
+    photos.value.unshift(...added)
+    if (added.length) showMessage(`${added.length} ${added.length === 1 ? 'photo' : 'photos'} saved.`)
+  } catch (error) {
+    if (!isCancellation(error)) showError(error, 'Photos could not be added.')
+  } finally {
+    busyAction.value = null
   }
-
-
-  if (!display.value.includes('.')) {
-
-    display.value += '.';
-
-  }
-
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Select Operator
-|--------------------------------------------------------------------------
-*/
-
-function selectOperator(operator: Operator) {
-
-  if (display.value === 'Error') {
-
-    return;
-
+async function removePendingPhoto() {
+  const photo = photoPendingDeletion.value
+  if (!photo || busy.value) return
+  busyAction.value = 'delete'
+  const remaining = photos.value.filter((item) => item.id !== photo.id)
+  try {
+    await deletePhoto(photo, remaining)
+    photos.value = remaining
+    if (selectedPhoto.value?.id === photo.id) selectedPhoto.value = null
+    showMessage('Photo deleted.')
+  } catch (error) {
+    showError(error, 'The photo could not be deleted.')
+  } finally {
+    busyAction.value = null
+    photoPendingDeletion.value = null
   }
-
-
-  const currentNumber = Number(display.value);
-
-
-  /*
-   * Example:
-   *
-   * User presses:
-   *
-   * 10 +
-   *
-   * and then changes to:
-   *
-   * 10 ×
-   */
-
-  if (
-    selectedOperator.value !== null &&
-    waitingForSecondNumber.value
-  ) {
-
-    selectedOperator.value = operator;
-
-    return;
-
-  }
-
-
-  /*
-   * Store first number.
-   */
-
-  if (firstNumber.value === null) {
-
-    firstNumber.value = currentNumber;
-
-  }
-
-  /*
-   * Allow chained calculations.
-   *
-   * Example:
-   *
-   * 10 + 5 + 2
-   */
-
-  else if (selectedOperator.value !== null) {
-
-    const result = performOperation(
-      firstNumber.value,
-      currentNumber,
-      selectedOperator.value
-    );
-
-
-    if (result === null) {
-
-      showError();
-
-      return;
-
-    }
-
-
-    display.value = formatNumber(result);
-
-    firstNumber.value = result;
-
-  }
-
-
-  selectedOperator.value = operator;
-
-  waitingForSecondNumber.value = true;
-
-  calculationCompleted.value = false;
-
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Perform Arithmetic
-|--------------------------------------------------------------------------
-*/
-
-function performOperation(
-  first: number,
-  second: number,
-  operator: Operator
-): number | null {
-
-  switch (operator) {
-
-    case '+':
-
-      return first + second;
-
-
-    case '-':
-
-      return first - second;
-
-
-    case '*':
-
-      return first * second;
-
-
-    case '/':
-
-      if (second === 0) {
-
-        return null;
-
-      }
-
-      return first / second;
-
-  }
-
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value))
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Calculate Result
-|--------------------------------------------------------------------------
-*/
-
-function calculate() {
-
-  if (
-    firstNumber.value === null ||
-    selectedOperator.value === null ||
-    waitingForSecondNumber.value
-  ) {
-
-    return;
-
-  }
-
-
-  const secondNumber = Number(display.value);
-
-
-  const result = performOperation(
-    firstNumber.value,
-    secondNumber,
-    selectedOperator.value
-  );
-
-
-  if (result === null) {
-
-    showError();
-
-    return;
-
-  }
-
-
-  display.value = formatNumber(result);
-
-
-  firstNumber.value = null;
-
-  selectedOperator.value = null;
-
-  waitingForSecondNumber.value = false;
-
-  calculationCompleted.value = true;
-
+function showMessage(value: string) {
+  messageColor.value = 'success'
+  message.value = value
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Clear
-|--------------------------------------------------------------------------
-*/
-
-function clearCalculator() {
-
-  display.value = '0';
-
-  firstNumber.value = null;
-
-  selectedOperator.value = null;
-
-  waitingForSecondNumber.value = false;
-
-  calculationCompleted.value = false;
-
+function showError(error: unknown, fallback: string) {
+  console.error(error)
+  messageColor.value = 'danger'
+  message.value = error instanceof Error && error.message ? error.message : fallback
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| Backspace
-|--------------------------------------------------------------------------
-*/
-
-function backspace() {
-
-  if (waitingForSecondNumber.value) {
-
-    return;
-
-  }
-
-
-  if (
-    display.value === 'Error' ||
-    calculationCompleted.value
-  ) {
-
-    display.value = '0';
-
-    calculationCompleted.value = false;
-
-    return;
-
-  }
-
-
-  display.value = display.value.slice(0, -1);
-
-
-  if (
-    display.value === '' ||
-    display.value === '-'
-  ) {
-
-    display.value = '0';
-
-  }
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Display Error
-|--------------------------------------------------------------------------
-*/
-
-function showError() {
-
-  display.value = 'Error';
-
-  firstNumber.value = null;
-
-  selectedOperator.value = null;
-
-  waitingForSecondNumber.value = false;
-
-  calculationCompleted.value = true;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Format Result
-|--------------------------------------------------------------------------
-*/
-
-function formatNumber(number: number): string {
-
-  if (!Number.isFinite(number)) {
-
-    return 'Error';
-
-  }
-
-
-  /*
-   * Prevent values like:
-   *
-   * 0.1 + 0.2
-   *
-   * becoming:
-   *
-   * 0.30000000000000004
-   */
-
-  return Number(
-    number.toPrecision(12)
-  ).toString();
-
-}
-
 </script>
 
-
 <style scoped>
-
-/*
-|--------------------------------------------------------------------------
-| Ionic Page
-|--------------------------------------------------------------------------
-*/
-
-ion-content {
-
-  --background: #090b10;
-
+ion-header, ion-toolbar { --background: rgba(249, 247, 242, 0.94); --color: #1c2522; }
+ion-content { --background: #f9f7f2; --color: #1c2522; }
+.gallery-shell { width: min(1080px, 100%); min-height: 100%; margin: 0 auto; padding: 26px 18px calc(110px + env(safe-area-inset-bottom)); }
+.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding: 28px; border-radius: 28px; color: #f9f7f2; background: linear-gradient(135deg, #183d34, #2f6c5b); box-shadow: 0 18px 45px rgba(24, 61, 52, 0.18); }
+.eyebrow { margin: 0 0 10px; color: #f4c95d; font-size: .72rem; font-weight: 800; letter-spacing: .18em; }
+.hero h1 { max-width: 600px; margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.15rem, 8vw, 4.7rem); font-weight: 500; line-height: .98; }
+.hero-copy { max-width: 570px; margin: 18px 0 0; color: rgba(249,247,242,.76); line-height: 1.55; }
+.photo-count { min-width: 108px; padding: 18px; border: 1px solid rgba(255,255,255,.16); border-radius: 20px; background: rgba(255,255,255,.08); text-align: center; }
+.photo-count strong, .photo-count span { display: block; }
+.photo-count strong { font-size: 2rem; }
+.photo-count span { color: rgba(255,255,255,.65); font-size: .8rem; }
+.actions { display: flex; gap: 12px; margin: 22px 0 28px; }
+.actions ion-button { min-height: 50px; margin: 0; font-weight: 700; text-transform: none; --border-radius: 15px; }
+.primary-action { --background: #d7663f; --background-activated: #b95031; }
+.secondary-action { --border-color: #285849; --color: #285849; }
+.state-card, .empty-state { display: grid; place-items: center; min-height: 310px; padding: 42px 20px; border: 1px dashed #c7c2b6; border-radius: 26px; text-align: center; }
+.state-card { align-content: center; color: #68736f; }
+.empty-icon { display: grid; place-items: center; width: 78px; height: 78px; border-radius: 50%; color: #2f6c5b; background: #e3eee9; font-size: 2.2rem; }
+.empty-state h2 { margin: 20px 0 6px; font-family: Georgia, serif; font-size: 1.65rem; }
+.empty-state p { max-width: 390px; margin: 0 0 12px; color: #68736f; line-height: 1.5; }
+.empty-state ion-button { --color: #d7663f; font-weight: 700; text-transform: none; }
+.photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.photo-card { position: relative; aspect-ratio: 4 / 5; overflow: hidden; border-radius: 20px; background: #e7e2d8; box-shadow: 0 8px 25px rgba(38,47,43,.09); }
+.photo-open { width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+.photo-open img { width: 100%; height: 100%; object-fit: cover; transition: transform 220ms ease; }
+.photo-open:hover img { transform: scale(1.025); }
+.photo-date { position: absolute; right: 12px; bottom: 12px; left: 12px; padding: 28px 10px 9px; border-radius: 0 0 12px 12px; color: white; background: linear-gradient(transparent, rgba(0,0,0,.68)); font-size: .75rem; text-align: left; }
+.delete-button { position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; margin: 0; --border-radius: 50%; --background: rgba(18,24,22,.68); --color: white; }
+ion-fab-button { --background: #d7663f; --background-activated: #b95031; --box-shadow: 0 10px 30px rgba(215,102,63,.38); }
+.photo-viewer { --background: #111614; }
+.photo-viewer ion-toolbar { --background: #111614; --color: white; }
+.photo-viewer ion-content { --background: #111614; }
+.viewer-content { display: grid; place-items: center; min-height: 100%; padding: 16px; }
+.viewer-content img { max-width: 100%; max-height: calc(100vh - 100px); border-radius: 12px; object-fit: contain; }
+@media (max-width: 720px) {
+  .gallery-shell { padding-top: 14px; }
+  .hero { align-items: flex-start; padding: 23px; }
+  .photo-count { min-width: 78px; padding: 12px 8px; }
+  .hero-copy { font-size: .9rem; }
+  .actions { display: grid; grid-template-columns: 1fr; }
+  .photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .photo-card { border-radius: 15px; }
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| Main Container
-|--------------------------------------------------------------------------
-*/
-
-.page-container {
-
-  width: 100%;
-
-  min-height: 100%;
-
-  display: flex;
-
-  justify-content: center;
-
-  align-items: center;
-
-  box-sizing: border-box;
-
-  padding:
-    calc(24px + env(safe-area-inset-top))
-    16px
-    calc(24px + env(safe-area-inset-bottom));
-
+@media (max-width: 390px) {
+  .hero { display: block; }
+  .photo-count { display: flex; align-items: baseline; gap: 6px; width: fit-content; margin-top: 20px; }
+  .photo-count strong, .photo-count span { display: inline; }
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| Calculator
-|--------------------------------------------------------------------------
-*/
-
-.calculator {
-
-  width: 100%;
-
-  max-width: 420px;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Application Title
-|--------------------------------------------------------------------------
-*/
-
-.app-title {
-
-  margin-bottom: 20px;
-
-}
-
-
-.app-title span {
-
-  color: #3880ff;
-
-  font-size: 0.75rem;
-
-  font-weight: 700;
-
-  letter-spacing: 3px;
-
-}
-
-
-.app-title h1 {
-
-  margin:
-
-    4px 0 0;
-
-  color: white;
-
-  font-size: 1.7rem;
-
-  font-weight: 600;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Calculator Screen
-|--------------------------------------------------------------------------
-*/
-
-.display-container {
-
-  min-height: 150px;
-
-  margin-bottom: 18px;
-
-  padding: 25px 20px;
-
-  border: 1px solid rgba(255, 255, 255, 0.08);
-
-  border-radius: 26px;
-
-  background:
-
-    linear-gradient(
-      145deg,
-      #191d26,
-      #101319
-    );
-
-  display: flex;
-
-  flex-direction: column;
-
-  justify-content: flex-end;
-
-  align-items: flex-end;
-
-  overflow: hidden;
-
-}
-
-
-.previous-operation {
-
-  width: 100%;
-
-  margin-bottom: 10px;
-
-  color: #8b93a3;
-
-  text-align: right;
-
-  font-size: 1rem;
-
-}
-
-
-.display {
-
-  width: 100%;
-
-  color: white;
-
-  text-align: right;
-
-  white-space: nowrap;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-
-  font-size: clamp(
-    2.7rem,
-    11vw,
-    4.2rem
-  );
-
-  font-weight: 300;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Ionic Grid
-|--------------------------------------------------------------------------
-*/
-
-.calculator-grid {
-
-  padding: 0;
-
-}
-
-
-ion-col {
-
-  padding: 4px;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Calculator Buttons
-|--------------------------------------------------------------------------
-*/
-
-.calculator-button {
-
-  width: 100%;
-
-  height: 68px;
-
-  margin: 0;
-
-  font-size: 1.35rem;
-
-  font-weight: 600;
-
-  --border-radius: 20px;
-
-  --box-shadow: none;
-
-  --background: #20242c;
-
-  --background-activated: #303640;
-
-  --color: white;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Utility Buttons
-|--------------------------------------------------------------------------
-*/
-
-.calculator-button.utility {
-
-  --background: #d7d9de;
-
-  --background-activated: #bfc2c8;
-
-  --color: #121419;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Operators
-|--------------------------------------------------------------------------
-*/
-
-.calculator-button.operator {
-
-  --background: #ff9500;
-
-  --background-activated: #d97f00;
-
-  --color: white;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Equals
-|--------------------------------------------------------------------------
-*/
-
-.calculator-button.equals {
-
-  --background: #3880ff;
-
-  --background-activated: #2667d8;
-
-  --color: white;
-
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| Smaller Phones
-|--------------------------------------------------------------------------
-*/
-
-@media (max-height: 680px) {
-
-  .display-container {
-
-    min-height: 105px;
-
-    margin-bottom: 10px;
-
-    padding: 15px;
-
-  }
-
-
-  .calculator-button {
-
-    height: 53px;
-
-  }
-
-
-  .app-title {
-
-    margin-bottom: 10px;
-
-  }
-
-}
-
 </style>
