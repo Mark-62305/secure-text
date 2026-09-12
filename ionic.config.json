@@ -1,0 +1,7 @@
+{
+  "name": "ionic-calculator",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite"
+}
