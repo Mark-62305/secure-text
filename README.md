@@ -1,13 +1,15 @@
 # SECTEXT
 
-SECTEXT is a Vue/Ionic photo gallery that captures photos or imports them from the device and keeps them available across app launches.
+SECTEXT is a Vue/Ionic application for encrypting and decrypting text with AES-256-GCM, Caesar, and Vigenère. All processing happens locally on the device.
 
-## Storage
+## Ciphers
 
-- Photo bytes are saved with Capacitor Filesystem under the private `Data/photos` directory.
-- Gallery metadata is stored with Capacitor Preferences.
-- In a browser, Capacitor uses IndexedDB-backed file storage and local storage preferences.
-- On Android, files and preferences remain private to the app and are removed when the app is uninstalled.
+- Caesar shifts English letters by a number from 1 to 25.
+- Vigenère applies a repeating alphabetic keyword.
+- AES-256-GCM derives a key from a password with PBKDF2-SHA-256 and authenticates the ciphertext.
+- Letter case is preserved, while spaces, punctuation, numbers, and non-Latin characters remain unchanged.
+
+Caesar and Vigenère are intended for learning and are not secure for sensitive information. Use AES with a strong, unique password when security matters.
 
 ## Run in a browser
 
@@ -15,8 +17,6 @@ SECTEXT is a Vue/Ionic photo gallery that captures photos or imports them from t
 npm install
 npm run dev
 ```
-
-Camera capture requires browser permission and a secure context (`localhost` or HTTPS). The device picker works as a fallback where a live camera is unavailable.
 
 ## Build and sync Android
 
@@ -27,4 +27,4 @@ cd android
 ./gradlew assembleDebug
 ```
 
-The local machine must have an Android SDK configured through `ANDROID_HOME` or `android/local.properties`. The debug APK is generated under `android/app/build/outputs/apk/debug/`.
+The local machine must have an Android SDK configured through `ANDROID_HOME` or `android/local.properties`. The debug APK is generated under `android/app/build/outputs/apk/debug/`. The GitHub Actions workflow uploads it as `SECTEXT.apk`.

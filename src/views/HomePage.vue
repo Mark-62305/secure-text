@@ -1,273 +1,857 @@
 <template>
   <IonPage>
-    <IonHeader class="ion-no-border">
-      <IonToolbar>
-        <IonTitle>SECTEXT</IonTitle>
-        <IonButtons slot="end">
-          <IonButton aria-label="Choose photos" :disabled="busy" @click="pickFromLibrary">
-            <IonIcon slot="icon-only" :icon="imagesOutline" />
-          </IonButton>
-        </IonButtons>
-      </IonToolbar>
-    </IonHeader>
-
     <IonContent :fullscreen="true">
-      <main class="gallery-shell">
-        <section class="hero" aria-labelledby="gallery-heading">
+      <main class="page-shell">
+        <header class="app-header">
+          <div class="brand-icon" aria-hidden="true">
+            <IonIcon :icon="keyOutline" />
+          </div>
           <div>
-            <p class="eyebrow">YOUR MOMENTS</p>
-            <h1 id="gallery-heading">Keep life in frame.</h1>
-            <p class="hero-copy">
-              Capture a new photo or bring in favourites from your device. Your photos stay stored on this device.
-            </p>
+            <p class="eyebrow">ON-DEVICE CRYPTOGRAPHY</p>
+            <h1>SECTEXT</h1>
+            <p>Encrypt and decrypt text directly on your device.</p>
           </div>
-          <div class="photo-count" aria-live="polite">
-            <strong>{{ photos.length }}</strong>
-            <span>{{ photos.length === 1 ? 'photo' : 'photos' }}</span>
-          </div>
-        </section>
+          <span class="local-badge"><i></i> Offline</span>
+        </header>
 
-        <section class="actions" aria-label="Photo actions">
-          <IonButton class="primary-action" :disabled="busy" @click="capturePhoto">
-            <IonSpinner v-if="busyAction === 'camera'" name="crescent" />
-            <IonIcon v-else slot="start" :icon="cameraOutline" />
-            Take photo
-          </IonButton>
-          <IonButton fill="outline" class="secondary-action" :disabled="busy" @click="pickFromLibrary">
-            <IonSpinner v-if="busyAction === 'library'" name="crescent" />
-            <IonIcon v-else slot="start" :icon="imagesOutline" />
-            Add from device
-          </IonButton>
-        </section>
-
-        <section v-if="loading" class="state-card" aria-live="polite">
-          <IonSpinner name="crescent" />
-          <p>Opening your gallery…</p>
-        </section>
-
-        <section v-else-if="photos.length === 0" class="empty-state">
-          <div class="empty-icon"><IonIcon :icon="imageOutline" /></div>
-          <h2>Your gallery is ready</h2>
-          <p>Take your first picture or choose one already on your device.</p>
-          <IonButton fill="clear" :disabled="busy" @click="capturePhoto">
-            Start with a photo
-            <IonIcon slot="end" :icon="arrowForwardOutline" />
-          </IonButton>
-        </section>
-
-        <section v-else class="photo-grid" aria-label="Saved photos">
-          <article v-for="photo in photos" :key="photo.id" class="photo-card">
-            <button class="photo-open" :aria-label="`Open photo from ${formatDate(photo.createdAt)}`" @click="selectedPhoto = photo">
-              <img :src="photo.webviewPath" :alt="`Saved photo from ${formatDate(photo.createdAt)}`" loading="lazy" />
-              <span class="photo-date">{{ formatDate(photo.createdAt) }}</span>
-            </button>
-            <IonButton
-              fill="clear"
-              class="delete-button"
-              :aria-label="`Delete photo from ${formatDate(photo.createdAt)}`"
-              @click="photoPendingDeletion = photo"
+        <section class="cipher-card" aria-label="Text cipher tool">
+          <div class="mode-switch" role="group" aria-label="Operation">
+            <button
+              type="button"
+              :class="{ active: mode === 'encrypt' }"
+              data-testid="encrypt-mode"
+              @click="setMode('encrypt')"
             >
-              <IonIcon slot="icon-only" :icon="trashOutline" />
-            </IonButton>
-          </article>
-        </section>
-      </main>
-
-      <IonFab v-if="photos.length" slot="fixed" vertical="bottom" horizontal="end">
-        <IonFabButton aria-label="Take a photo" :disabled="busy" @click="capturePhoto">
-          <IonIcon :icon="cameraOutline" />
-        </IonFabButton>
-      </IonFab>
-
-      <IonModal :is-open="Boolean(selectedPhoto)" class="photo-viewer" @did-dismiss="selectedPhoto = null">
-        <IonHeader class="ion-no-border">
-          <IonToolbar>
-            <IonTitle>{{ selectedPhoto ? formatDate(selectedPhoto.createdAt) : 'Photo' }}</IonTitle>
-            <IonButtons slot="end">
-              <IonButton aria-label="Close photo" @click="selectedPhoto = null">
-                <IonIcon slot="icon-only" :icon="closeOutline" />
-              </IonButton>
-            </IonButtons>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent>
-          <div class="viewer-content">
-            <img v-if="selectedPhoto" :src="selectedPhoto.webviewPath" alt="Selected gallery photo" />
+              <IonIcon :icon="lockClosedOutline" />
+              Encrypt
+            </button>
+            <button
+              type="button"
+              :class="{ active: mode === 'decrypt' }"
+              data-testid="decrypt-mode"
+              @click="setMode('decrypt')"
+            >
+              <IonIcon :icon="lockOpenOutline" />
+              Decrypt
+            </button>
           </div>
-        </IonContent>
-      </IonModal>
 
-      <IonAlert
-        :is-open="Boolean(photoPendingDeletion)"
-        header="Delete this photo?"
-        message="This permanently removes the photo from this device."
-        :buttons="deleteButtons"
-        @did-dismiss="photoPendingDeletion = null"
-      />
+          <div class="section-heading">
+            <div>
+              <span>01</span>
+              <h2>Choose a cipher</h2>
+            </div>
+            <small>Modern and classical</small>
+          </div>
 
-      <IonToast
-        :is-open="Boolean(message)"
-        :message="message"
-        :color="messageColor"
-        :duration="3200"
-        position="bottom"
-        @did-dismiss="message = ''"
-      />
+          <div class="cipher-options" role="radiogroup" aria-label="Cipher">
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="cipher === 'caesar'"
+              :class="{ active: cipher === 'caesar' }"
+              data-testid="caesar-cipher"
+              @click="setCipher('caesar')"
+            >
+              <span class="cipher-letter">C</span>
+              <span><strong>Caesar Cipher</strong><small>Shift each letter</small></span>
+              <IonIcon :icon="cipher === 'caesar' ? checkmarkCircle : ellipseOutline" />
+            </button>
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="cipher === 'vigenere'"
+              :class="{ active: cipher === 'vigenere' }"
+              data-testid="vigenere-cipher"
+              @click="setCipher('vigenere')"
+            >
+              <span class="cipher-letter">V</span>
+              <span><strong>Vigenère Cipher</strong><small>Repeat a keyword</small></span>
+              <IonIcon :icon="cipher === 'vigenere' ? checkmarkCircle : ellipseOutline" />
+            </button>
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="cipher === 'aes'"
+              :class="{ active: cipher === 'aes' }"
+              data-testid="aes-cipher"
+              @click="setCipher('aes')"
+            >
+              <span class="cipher-letter">A</span>
+              <span><strong>AES-256-GCM</strong><small>Password protected</small></span>
+              <IonIcon :icon="cipher === 'aes' ? checkmarkCircle : ellipseOutline" />
+            </button>
+          </div>
+
+          <div class="section-heading input-heading">
+            <div>
+              <span>02</span>
+              <h2>{{ mode === 'encrypt' ? 'Enter plaintext' : 'Enter ciphertext' }}</h2>
+            </div>
+            <small>{{ sourceText.length.toLocaleString() }} characters</small>
+          </div>
+
+          <textarea
+            v-model="sourceText"
+            data-testid="source-text"
+            :placeholder="sourcePlaceholder"
+            rows="7"
+            spellcheck="false"
+            @input="clearFeedback"
+          ></textarea>
+
+          <div class="key-row">
+            <div class="key-copy">
+              <span>03</span>
+              <div>
+                <h2>{{ keyTitle }}</h2>
+                <p>{{ keyDescription }}</p>
+              </div>
+            </div>
+
+            <div v-if="cipher === 'caesar'" class="shift-control">
+              <button type="button" aria-label="Decrease shift" @click="adjustShift(-1)">−</button>
+              <input
+                v-model.number="shift"
+                data-testid="shift"
+                type="number"
+                min="1"
+                max="25"
+                inputmode="numeric"
+                aria-label="Caesar shift"
+                @input="clearFeedback"
+                @keyup.enter="processText"
+              />
+              <button type="button" aria-label="Increase shift" @click="adjustShift(1)">+</button>
+            </div>
+
+            <div v-else-if="cipher === 'vigenere'" class="keyword-control">
+              <IonIcon :icon="keyOutline" aria-hidden="true" />
+              <input
+                v-model="keyword"
+                data-testid="keyword"
+                type="text"
+                placeholder="e.g. LEMON"
+                autocomplete="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                @input="clearFeedback"
+                @keyup.enter="processText"
+              />
+            </div>
+
+            <div v-else class="password-control">
+              <IonIcon :icon="keyOutline" aria-hidden="true" />
+              <input
+                v-model="password"
+                data-testid="password"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="Enter AES password"
+                autocomplete="off"
+                @input="clearFeedback"
+                @keyup.enter="processText"
+              />
+              <button
+                type="button"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                @click="showPassword = !showPassword"
+              >
+                <IonIcon :icon="showPassword ? eyeOffOutline : eyeOutline" />
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="process-button"
+            data-testid="process-button"
+            :disabled="isProcessing || !canProcess"
+            @click="processText"
+          >
+            <IonIcon :icon="mode === 'encrypt' ? lockClosedOutline : lockOpenOutline" />
+            {{ isProcessing ? 'Working…' : mode === 'encrypt' ? 'Encrypt text' : 'Decrypt text' }}
+            <IonIcon :icon="arrowForwardOutline" />
+          </button>
+
+          <p v-if="feedback" class="feedback" :class="feedback.type" role="status" data-testid="feedback">
+            {{ feedback.text }}
+          </p>
+
+          <div class="result-divider"><span>RESULT</span></div>
+
+          <div class="result-heading">
+            <div>
+              <span>04</span>
+              <h2>{{ mode === 'encrypt' ? 'Ciphertext' : 'Plaintext' }}</h2>
+            </div>
+            <div class="result-actions">
+              <button type="button" :disabled="!result" @click="useResult">
+                <IonIcon :icon="swapVerticalOutline" /> Use as input
+              </button>
+              <button type="button" :disabled="!result" @click="copyResult">
+                <IonIcon :icon="copyOutline" /> Copy
+              </button>
+            </div>
+          </div>
+
+          <textarea
+            :value="result"
+            data-testid="result-text"
+            class="result-text"
+            :placeholder="mode === 'encrypt' ? 'Encrypted text will appear here.' : 'Decrypted text will appear here.'"
+            rows="6"
+            readonly
+          ></textarea>
+
+          <button v-if="sourceText || keyword || password || result" type="button" class="clear-button" @click="clearAll">
+            <IonIcon :icon="trashOutline" /> Clear everything
+          </button>
+        </section>
+
+        <footer>
+          <IonIcon :icon="cipher === 'aes' ? shieldCheckmarkOutline : informationCircleOutline" />
+          <span>{{ footerText }}</span>
+        </footer>
+      </main>
     </IonContent>
   </IonPage>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, ref } from 'vue'
+import { IonContent, IonIcon, IonPage } from '@ionic/vue'
 import {
-  IonAlert, IonButton, IonButtons, IonContent, IonFab, IonFabButton,
-  IonHeader, IonIcon, IonModal, IonPage, IonSpinner, IonTitle, IonToast, IonToolbar,
-} from '@ionic/vue'
-import {
-  arrowForwardOutline, cameraOutline, closeOutline, imageOutline, imagesOutline, trashOutline,
+  arrowForwardOutline,
+  checkmarkCircle,
+  copyOutline,
+  ellipseOutline,
+  eyeOffOutline,
+  eyeOutline,
+  informationCircleOutline,
+  keyOutline,
+  lockClosedOutline,
+  lockOpenOutline,
+  shieldCheckmarkOutline,
+  swapVerticalOutline,
+  trashOutline,
 } from 'ionicons/icons'
-import {
-  choosePhotos, deletePhoto, isCancellation, listenForRestoredPhotos, loadPhotos, takePhoto, type GalleryPhoto,
-} from '@/services/photoGallery'
+import { decryptAes, encryptAes } from '@/services/aes'
+import { caesarCipher, vigenereCipher, type CipherMode } from '@/services/ciphers'
 
-const photos = ref<GalleryPhoto[]>([])
-const loading = ref(true)
-const busyAction = ref<'camera' | 'library' | 'delete' | null>(null)
-const selectedPhoto = ref<GalleryPhoto | null>(null)
-const photoPendingDeletion = ref<GalleryPhoto | null>(null)
-const message = ref('')
-const messageColor = ref<'success' | 'danger'>('success')
-const busy = computed(() => busyAction.value !== null)
-const restoredPhotoListener = listenForRestoredPhotos((photo) => {
-  if (!photos.value.some((item) => item.id === photo.id)) photos.value.unshift(photo)
+type Cipher = 'caesar' | 'vigenere' | 'aes'
+type Feedback = { type: 'success' | 'error'; text: string }
+
+const mode = ref<CipherMode>('encrypt')
+const cipher = ref<Cipher>('caesar')
+const sourceText = ref('')
+const shift = ref(3)
+const keyword = ref('')
+const password = ref('')
+const showPassword = ref(false)
+const isProcessing = ref(false)
+const result = ref('')
+const feedback = ref<Feedback | null>(null)
+
+const canProcess = computed(() => {
+  if (!sourceText.value) return false
+  if (cipher.value === 'caesar') {
+    return Number.isInteger(shift.value) && shift.value >= 1 && shift.value <= 25
+  }
+  if (cipher.value === 'vigenere') return Boolean(keyword.value.trim())
+  return Boolean(password.value)
 })
 
-const deleteButtons = [
-  { text: 'Cancel', role: 'cancel' },
-  { text: 'Delete', role: 'destructive', handler: () => removePendingPhoto() },
-]
-
-onMounted(async () => {
-  try {
-    photos.value = await loadPhotos()
-  } catch (error) {
-    showError(error, 'Your saved photos could not be loaded.')
-  } finally {
-    loading.value = false
-  }
+const keyTitle = computed(() => {
+  if (cipher.value === 'caesar') return 'Set the shift'
+  if (cipher.value === 'vigenere') return 'Enter a keyword'
+  return 'Enter a password'
 })
 
-onUnmounted(async () => (await restoredPhotoListener).remove())
+const keyDescription = computed(() => {
+  if (cipher.value === 'caesar') return 'A number from 1 to 25'
+  if (cipher.value === 'vigenere') return 'Letters A–Z only'
+  return 'Required to decrypt this AES ciphertext'
+})
 
-async function capturePhoto() {
-  if (busy.value) return
-  busyAction.value = 'camera'
+const sourcePlaceholder = computed(() => {
+  if (mode.value === 'encrypt') return 'Type or paste your message…'
+  return cipher.value === 'aes'
+    ? 'Paste a SECTEXT AES ciphertext…'
+    : 'Type or paste the encrypted text…'
+})
+
+const footerText = computed(() => cipher.value === 'aes'
+  ? 'AES-256-GCM provides authenticated encryption. Your text and password remain on this device.'
+  : 'Caesar and Vigenère are historical ciphers for learning—not secure protection for sensitive data.')
+
+function setMode(nextMode: CipherMode) {
+  if (mode.value === nextMode) return
+  mode.value = nextMode
+  resetResult()
+}
+
+function setCipher(nextCipher: Cipher) {
+  if (cipher.value === nextCipher) return
+  cipher.value = nextCipher
+  resetResult()
+}
+
+function adjustShift(amount: number) {
+  const current = Number.isInteger(shift.value) ? shift.value : 3
+  shift.value = Math.min(25, Math.max(1, current + amount))
+  clearFeedback()
+}
+
+async function processText() {
+  if (!canProcess.value || isProcessing.value) return
+
+  isProcessing.value = true
   try {
-    const photo = await takePhoto()
-    photos.value.unshift(photo)
-    showMessage('Photo saved to this device.')
+    if (cipher.value === 'caesar') {
+      result.value = caesarCipher(sourceText.value, shift.value, mode.value)
+    } else if (cipher.value === 'vigenere') {
+      result.value = vigenereCipher(sourceText.value, keyword.value, mode.value)
+    } else {
+      result.value = mode.value === 'encrypt'
+        ? await encryptAes(sourceText.value, password.value)
+        : await decryptAes(sourceText.value, password.value)
+    }
+
+    const cipherName = cipher.value === 'caesar'
+      ? 'Caesar'
+      : cipher.value === 'vigenere' ? 'Vigenère' : 'AES'
+    feedback.value = {
+      type: 'success',
+      text: `${cipherName} ${mode.value === 'encrypt' ? 'encryption' : 'decryption'} complete.`,
+    }
   } catch (error) {
-    if (!isCancellation(error)) showError(error, 'The photo could not be captured.')
+    result.value = ''
+    feedback.value = {
+      type: 'error',
+      text: error instanceof Error ? error.message : 'Unable to process the text.',
+    }
   } finally {
-    busyAction.value = null
+    isProcessing.value = false
   }
 }
 
-async function pickFromLibrary() {
-  if (busy.value) return
-  busyAction.value = 'library'
+async function copyResult() {
+  if (!result.value) return
+
   try {
-    const added = await choosePhotos()
-    photos.value.unshift(...added)
-    if (added.length) showMessage(`${added.length} ${added.length === 1 ? 'photo' : 'photos'} saved.`)
-  } catch (error) {
-    if (!isCancellation(error)) showError(error, 'Photos could not be added.')
-  } finally {
-    busyAction.value = null
+    await navigator.clipboard.writeText(result.value)
+    feedback.value = { type: 'success', text: 'Result copied to the clipboard.' }
+  } catch {
+    feedback.value = { type: 'error', text: 'Clipboard access failed. Copy the result manually.' }
   }
 }
 
-async function removePendingPhoto() {
-  const photo = photoPendingDeletion.value
-  if (!photo || busy.value) return
-  busyAction.value = 'delete'
-  const remaining = photos.value.filter((item) => item.id !== photo.id)
-  try {
-    await deletePhoto(photo, remaining)
-    photos.value = remaining
-    if (selectedPhoto.value?.id === photo.id) selectedPhoto.value = null
-    showMessage('Photo deleted.')
-  } catch (error) {
-    showError(error, 'The photo could not be deleted.')
-  } finally {
-    busyAction.value = null
-    photoPendingDeletion.value = null
-  }
+function useResult() {
+  if (!result.value) return
+  sourceText.value = result.value
+  mode.value = mode.value === 'encrypt' ? 'decrypt' : 'encrypt'
+  resetResult()
 }
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value))
+function resetResult() {
+  result.value = ''
+  feedback.value = null
 }
 
-function showMessage(value: string) {
-  messageColor.value = 'success'
-  message.value = value
+function clearFeedback() {
+  feedback.value = null
 }
 
-function showError(error: unknown, fallback: string) {
-  console.error(error)
-  messageColor.value = 'danger'
-  message.value = error instanceof Error && error.message ? error.message : fallback
+function clearAll() {
+  sourceText.value = ''
+  result.value = ''
+  keyword.value = ''
+  password.value = ''
+  showPassword.value = false
+  shift.value = 3
+  feedback.value = null
 }
 </script>
 
 <style scoped>
-ion-header, ion-toolbar { --background: rgba(249, 247, 242, 0.94); --color: #1c2522; }
-ion-content { --background: #f9f7f2; --color: #1c2522; }
-.gallery-shell { width: min(1080px, 100%); min-height: 100%; margin: 0 auto; padding: 26px 18px calc(110px + env(safe-area-inset-bottom)); }
-.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding: 28px; border-radius: 28px; color: #f9f7f2; background: linear-gradient(135deg, #183d34, #2f6c5b); box-shadow: 0 18px 45px rgba(24, 61, 52, 0.18); }
-.eyebrow { margin: 0 0 10px; color: #f4c95d; font-size: .72rem; font-weight: 800; letter-spacing: .18em; }
-.hero h1 { max-width: 600px; margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.15rem, 8vw, 4.7rem); font-weight: 500; line-height: .98; }
-.hero-copy { max-width: 570px; margin: 18px 0 0; color: rgba(249,247,242,.76); line-height: 1.55; }
-.photo-count { min-width: 108px; padding: 18px; border: 1px solid rgba(255,255,255,.16); border-radius: 20px; background: rgba(255,255,255,.08); text-align: center; }
-.photo-count strong, .photo-count span { display: block; }
-.photo-count strong { font-size: 2rem; }
-.photo-count span { color: rgba(255,255,255,.65); font-size: .8rem; }
-.actions { display: flex; gap: 12px; margin: 22px 0 28px; }
-.actions ion-button { min-height: 50px; margin: 0; font-weight: 700; text-transform: none; --border-radius: 15px; }
-.primary-action { --background: #d7663f; --background-activated: #b95031; }
-.secondary-action { --border-color: #285849; --color: #285849; }
-.state-card, .empty-state { display: grid; place-items: center; min-height: 310px; padding: 42px 20px; border: 1px dashed #c7c2b6; border-radius: 26px; text-align: center; }
-.state-card { align-content: center; color: #68736f; }
-.empty-icon { display: grid; place-items: center; width: 78px; height: 78px; border-radius: 50%; color: #2f6c5b; background: #e3eee9; font-size: 2.2rem; }
-.empty-state h2 { margin: 20px 0 6px; font-family: Georgia, serif; font-size: 1.65rem; }
-.empty-state p { max-width: 390px; margin: 0 0 12px; color: #68736f; line-height: 1.5; }
-.empty-state ion-button { --color: #d7663f; font-weight: 700; text-transform: none; }
-.photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.photo-card { position: relative; aspect-ratio: 4 / 5; overflow: hidden; border-radius: 20px; background: #e7e2d8; box-shadow: 0 8px 25px rgba(38,47,43,.09); }
-.photo-open { width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
-.photo-open img { width: 100%; height: 100%; object-fit: cover; transition: transform 220ms ease; }
-.photo-open:hover img { transform: scale(1.025); }
-.photo-date { position: absolute; right: 12px; bottom: 12px; left: 12px; padding: 28px 10px 9px; border-radius: 0 0 12px 12px; color: white; background: linear-gradient(transparent, rgba(0,0,0,.68)); font-size: .75rem; text-align: left; }
-.delete-button { position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; margin: 0; --border-radius: 50%; --background: rgba(18,24,22,.68); --color: white; }
-ion-fab-button { --background: #d7663f; --background-activated: #b95031; --box-shadow: 0 10px 30px rgba(215,102,63,.38); }
-.photo-viewer { --background: #111614; }
-.photo-viewer ion-toolbar { --background: #111614; --color: white; }
-.photo-viewer ion-content { --background: #111614; }
-.viewer-content { display: grid; place-items: center; min-height: 100%; padding: 16px; }
-.viewer-content img { max-width: 100%; max-height: calc(100vh - 100px); border-radius: 12px; object-fit: contain; }
-@media (max-width: 720px) {
-  .gallery-shell { padding-top: 14px; }
-  .hero { align-items: flex-start; padding: 23px; }
-  .photo-count { min-width: 78px; padding: 12px 8px; }
-  .hero-copy { font-size: .9rem; }
-  .actions { display: grid; grid-template-columns: 1fr; }
-  .photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .photo-card { border-radius: 15px; }
+ion-content {
+  --background: #071019;
+  color: #eaf6f4;
 }
-@media (max-width: 390px) {
-  .hero { display: block; }
-  .photo-count { display: flex; align-items: baseline; gap: 6px; width: fit-content; margin-top: 20px; }
-  .photo-count strong, .photo-count span { display: inline; }
+
+ion-content::part(background) {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(38, 196, 181, 0.12), transparent 26rem),
+    radial-gradient(circle at 88% 80%, rgba(51, 102, 184, 0.1), transparent 28rem),
+    #071019;
+}
+
+.page-shell {
+  width: min(900px, calc(100% - 32px));
+  min-height: 100%;
+  margin: 0 auto;
+  padding: calc(34px + env(safe-area-inset-top)) 0 calc(24px + env(safe-area-inset-bottom));
+}
+
+.app-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 22px;
+}
+
+.brand-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 1px solid rgba(77, 225, 208, 0.3);
+  border-radius: 17px;
+  background: rgba(41, 194, 180, 0.12);
+  color: #50dfd1;
+  font-size: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 3px;
+  color: #4ed9cc;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.app-header h1 {
+  margin: 0;
+  color: #f3fbfb;
+  font-size: 1.9rem;
+  font-weight: 780;
+  letter-spacing: -0.04em;
+}
+
+.app-header p:last-child {
+  margin: 3px 0 0;
+  color: #78909e;
+  font-size: 0.82rem;
+}
+
+.local-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid rgba(109, 158, 168, 0.18);
+  border-radius: 99px;
+  color: #849ba8;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.local-badge i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4cd7a4;
+  box-shadow: 0 0 8px rgba(76, 215, 164, 0.7);
+}
+
+.cipher-card {
+  padding: 22px;
+  border: 1px solid rgba(124, 177, 186, 0.14);
+  border-radius: 24px;
+  background: rgba(12, 27, 40, 0.9);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-bottom: 24px;
+  padding: 5px;
+  border-radius: 14px;
+  background: #07131e;
+}
+
+.mode-switch button {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #708995;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.mode-switch button.active {
+  background: #15343f;
+  color: #62e3d8;
+}
+
+.section-heading,
+.result-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 9px;
+}
+
+.section-heading > div,
+.result-heading > div:first-child,
+.key-copy {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.section-heading span,
+.result-heading > div:first-child > span,
+.key-copy > span {
+  color: #3abfb5;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+h2 {
+  margin: 0;
+  color: #dbe9ec;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.section-heading small {
+  color: #5f7886;
+  font-size: 0.67rem;
+}
+
+.cipher-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.cipher-options > button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid rgba(127, 178, 188, 0.14);
+  border-radius: 14px;
+  background: #081722;
+  color: #718996;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cipher-options > button.active {
+  border-color: rgba(75, 220, 207, 0.52);
+  background: rgba(21, 66, 71, 0.6);
+}
+
+.cipher-letter {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  background: #142936;
+  color: #7fa0aa;
+  font-family: Georgia, serif;
+  font-weight: 800;
+}
+
+.active .cipher-letter {
+  background: #1f5b5d;
+  color: #68eadf;
+}
+
+.cipher-options strong,
+.cipher-options small {
+  display: block;
+}
+
+.cipher-options strong {
+  color: #c8d8dc;
+  font-size: 0.8rem;
+}
+
+.cipher-options small {
+  margin-top: 3px;
+  color: #657e8b;
+  font-size: 0.65rem;
+}
+
+.cipher-options ion-icon {
+  color: #3fcfc3;
+  font-size: 18px;
+}
+
+.input-heading {
+  margin-top: 22px;
+}
+
+textarea,
+.keyword-control,
+.password-control,
+.shift-control {
+  border: 1px solid rgba(127, 178, 188, 0.15);
+  outline: none;
+  background: #07131e;
+  color: #e7f0f2;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 145px;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 15px;
+  border-radius: 14px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+textarea:focus,
+.keyword-control:focus-within,
+.password-control:focus-within,
+.shift-control:focus-within {
+  border-color: rgba(79, 225, 214, 0.58);
+  box-shadow: 0 0 0 3px rgba(79, 225, 214, 0.07);
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: #4b6572;
+}
+
+.key-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 17px;
+  padding: 14px;
+  border: 1px solid rgba(127, 178, 188, 0.1);
+  border-radius: 14px;
+  background: rgba(7, 19, 30, 0.52);
+}
+
+.key-copy p {
+  margin: 3px 0 0;
+  color: #627b88;
+  font-size: 0.66rem;
+}
+
+.shift-control {
+  display: grid;
+  grid-template-columns: 38px 56px 38px;
+  overflow: hidden;
+  border-radius: 11px;
+}
+
+.shift-control button,
+.shift-control input {
+  height: 39px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #d7e7e9;
+  font: inherit;
+  text-align: center;
+}
+
+.shift-control button {
+  color: #55d9cd;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.shift-control input {
+  min-width: 0;
+  border-right: 1px solid rgba(127, 178, 188, 0.12);
+  border-left: 1px solid rgba(127, 178, 188, 0.12);
+  appearance: textfield;
+}
+
+.shift-control input::-webkit-inner-spin-button { appearance: none; }
+
+.keyword-control,
+.password-control {
+  display: grid;
+  width: min(250px, 52%);
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 11px;
+}
+
+.keyword-control { grid-template-columns: auto 1fr; }
+.password-control { grid-template-columns: auto 1fr auto; }
+
+.keyword-control > ion-icon,
+.password-control > ion-icon { color: #52727e; }
+
+.keyword-control input,
+.password-control input {
+  min-width: 0;
+  height: 39px;
+  padding: 0 9px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #e7f0f2;
+  font: inherit;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.password-control input { text-transform: none; }
+
+.password-control button {
+  display: grid;
+  padding: 7px;
+  border: 0;
+  place-items: center;
+  background: transparent;
+  color: #6f8995;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.process-button {
+  display: grid;
+  width: 100%;
+  height: 52px;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #38d1c5, #20aab2);
+  color: #032126;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.process-button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.feedback {
+  margin: 10px 0 0;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.feedback.success { color: #55d7aa; }
+.feedback.error { color: #ff8585; }
+
+.result-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 21px 0 16px;
+  color: #4d6875;
+  font-size: 0.59rem;
+  font-weight: 850;
+  letter-spacing: 0.17em;
+}
+
+.result-divider::before,
+.result-divider::after {
+  height: 1px;
+  flex: 1;
+  background: rgba(127, 178, 188, 0.11);
+  content: '';
+}
+
+.result-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.result-actions button,
+.clear-button {
+  border: 0;
+  background: transparent;
+  color: #708995;
+  font: inherit;
+  cursor: pointer;
+}
+
+.result-actions button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  font-size: 0.67rem;
+}
+
+.result-actions button:not(:disabled):hover {
+  background: rgba(79, 225, 214, 0.07);
+  color: #5dded4;
+}
+
+.result-actions button:disabled { opacity: 0.3; cursor: default; }
+.result-text { min-height: 120px; color: #9fc6ca; }
+
+.clear-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 13px auto -4px;
+  padding: 6px;
+  font-size: 0.68rem;
+}
+
+.clear-button:hover { color: #df8181; }
+
+footer {
+  display: flex;
+  max-width: 620px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 18px auto 0;
+  color: #58717d;
+  font-size: 0.67rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+footer ion-icon { flex: 0 0 auto; color: #477e83; font-size: 17px; }
+
+@media (max-width: 620px) {
+  .page-shell { width: min(100% - 22px, 900px); padding-top: calc(20px + env(safe-area-inset-top)); }
+  .app-header { grid-template-columns: auto 1fr; }
+  .local-badge { display: none; }
+  .brand-icon { width: 47px; height: 47px; border-radius: 14px; }
+  .app-header h1 { font-size: 1.6rem; }
+  .app-header p:last-child { font-size: 0.73rem; }
+  .cipher-card { padding: 15px; border-radius: 19px; }
+  .cipher-options { grid-template-columns: 1fr; }
+  .key-row { align-items: stretch; flex-direction: column; }
+  .keyword-control, .password-control { width: 100%; box-sizing: border-box; }
+  .shift-control { align-self: flex-start; }
+  .result-actions button { font-size: 0; }
+  .result-actions ion-icon { font-size: 17px; }
 }
 </style>
