@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.example.photogallery',
-  appName: 'Photo Gallery',
+  appId: 'com.secure.text',
+  appName: 'SECTEXT',
   webDir: 'dist'
 };
 

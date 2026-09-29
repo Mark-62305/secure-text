@@ -1,6 +1,6 @@
-# Ionic Photo Gallery
+# SECTEXT
 
-A Vue/Ionic photo gallery that captures photos or imports them from the device and keeps them available across app launches.
+SECTEXT is a Vue/Ionic photo gallery that captures photos or imports them from the device and keeps them available across app launches.
 
 ## Storage
 

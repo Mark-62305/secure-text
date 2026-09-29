@@ -1,5 +1,5 @@
 {
-  "name": "ionic-photo-gallery",
+  "name": "sectext",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -13,7 +13,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.1",
+    "@capacitor/android": "8.5.1",
     "@capacitor/app": "8.1.1",
     "@capacitor/camera": "^8.2.4",
     "@capacitor/core": "8.5.2",
@@ -45,5 +45,5 @@
     "vitest": "^4.0.0",
     "vue-tsc": "^2.1.10"
   },
-  "description": "A persistent Ionic photo gallery for web and Android"
+  "description": "SECTEXT Ionic application for web and Android"
 }

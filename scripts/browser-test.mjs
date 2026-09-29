@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const edge = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
-const profile = await mkdtemp(join(tmpdir(), 'ionic-photo-gallery-edge-'))
+const profile = await mkdtemp(join(tmpdir(), 'sectext-edge-'))
 const port = 9223
 const browser = spawn(edge, [
   '--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`,

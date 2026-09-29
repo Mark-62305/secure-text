@@ -2,7 +2,7 @@
   <IonPage>
     <IonHeader class="ion-no-border">
       <IonToolbar>
-        <IonTitle>Photo Gallery</IonTitle>
+        <IonTitle>SECTEXT</IonTitle>
         <IonButtons slot="end">
           <IonButton aria-label="Choose photos" :disabled="busy" @click="pickFromLibrary">
             <IonIcon slot="icon-only" :icon="imagesOutline" />

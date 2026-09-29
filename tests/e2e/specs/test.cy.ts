@@ -1,4 +1,4 @@
-describe('Ionic photo gallery', () => {
+describe('SECTEXT', () => {
   beforeEach(() => {
     cy.visit('/')
   })

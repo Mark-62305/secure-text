@@ -12,7 +12,7 @@ vi.mock('@/services/photoGallery', () => ({
   listenForRestoredPhotos: vi.fn(() => Promise.resolve({ remove: vi.fn() })),
 }))
 
-describe('Photo Gallery home page', () => {
+describe('SECTEXT home page', () => {
   beforeEach(() => vi.mocked(loadPhotos).mockResolvedValue([]))
 
   test('renders the empty gallery and capture actions', async () => {
