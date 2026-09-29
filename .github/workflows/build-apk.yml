@@ -51,8 +51,18 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
           test -d "$ANDROID_HOME"
-          command -v sdkmanager
-          sdkmanager --version
+          SDKMANAGER_PATH="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER_PATH" ] && [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDKMANAGER_PATH="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          if [ -n "$SDKMANAGER_PATH" ]; then
+            echo "sdkmanager=$SDKMANAGER_PATH"
+            "$SDKMANAGER_PATH" --version
+          else
+            echo "::warning::sdkmanager is not on PATH; continuing with the preinstalled Android SDK."
+          fi
+          test -d "$ANDROID_HOME/platforms"
+          test -d "$ANDROID_HOME/build-tools"
           ls -la "$ANDROID_HOME/platforms"
           ls -la "$ANDROID_HOME/build-tools"
 
